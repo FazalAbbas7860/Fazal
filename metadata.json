@@ -1,0 +1,6 @@
+{
+  "name": "Realtime Voice Translator",
+  "description": "A lightweight real-time voice translator with WebRTC and Speech Recognition that translates Urdu and Chinese spoken accents on-the-fly.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Realtime Voice Translator (Urdu ↔ Chinese)</title>
+  <!-- Tailwind CSS Play CDN for beginner-friendly zero-build setup -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide icons via CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between font-sans antialiased">
+
+  <!-- Header Section -->
+  <header class="bg-white border-b border-slate-100 py-4 px-6 sticky top-0 z-50 shadow-xs">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm">
+          <i data-lucide="languages" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-slate-900 leading-tight">Live Translator</h1>
+          <span class="text-xs text-slate-400 flex items-center gap-1 font-mono">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Urdu ↔ Chinese Realtime Call
+          </span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <div id="self-indicator" class="hidden flex items-center space-x-2 bg-slate-100 py-1.5 px-3 rounded-full text-xs font-medium text-slate-600">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm animate-pulse"></span>
+          <span id="indicator-username" class="max-w-[100px] truncate">username</span>
+          <span id="indicator-id" class="font-mono text-[10px] bg-white py-0.5 px-1.5 rounded-md border border-slate-200">ID: -----</span>
+        </div>
+        <span id="active-users-badge" class="text-xs font-mono bg-indigo-50 text-indigo-700 py-1.5 px-3 rounded-lg border border-indigo-100">
+          1 active
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main View Area -->
+  <main class="flex-1 w-full max-w-4xl px-4 py-8 flex items-center justify-center">
+
+    <!-- STAGE 1: REGISTRATION SCREEN -->
+    <section id="auth-view" class="w-full max-w-md bg-white border border-slate-100 rounded-3xl p-8 shadow-md">
+      <div class="text-center mb-6">
+        <div class="mx-auto w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 mb-4">
+          <i data-lucide="user" class="w-6 h-6"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Create Spoken Session</h2>
+        <p class="text-sm text-slate-500 mt-2">Translate spoken voices instantly over direct voice calls.</p>
+      </div>
+
+      <div id="auth-error" class="hidden mb-4 p-3 bg-rose-50 border border-rose-100 text-rose-700 rounded-xl text-xs flex items-center gap-2">
+        <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+        <span id="auth-error-msg">Error</span>
+      </div>
+
+      <form id="auth-form" class="space-y-5">
+        <div>
+          <label class="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">My Account Name</label>
+          <input type="text" id="username-input" required placeholder="Enter friend-visible name (e.g. Aslam)" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-slate-800" maxlength="15">
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">My Translation Unique ID (5 Digits)</label>
+          <input type="text" id="userid-input" required placeholder="e.g. 74829" class="w-full px-4 py-3 font-mono bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-slate-800" maxlength="8">
+          <span class="text-[11px] text-slate-400 mt-1 block">Share this ID code with your friend so they can call you.</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-3">Your Language (My Spoken Accent)</label>
+          <div class="grid grid-cols-2 gap-3">
+            <button type="button" id="lang-ur" class="lang-selector-btn py-3 px-4 text-center rounded-xl border font-medium text-sm flex flex-col items-center justify-center gap-1 transition-all border-indigo-600 bg-indigo-50/50 text-indigo-900 ring-2 ring-indigo-100" data-lang="ur-PK">
+              <span class="text-2xl">🇵🇰</span>
+              <span>Urdu (اردو)</span>
+            </button>
+            <button type="button" id="lang-zh" class="lang-selector-btn py-3 px-4 text-center rounded-xl border font-medium text-sm flex flex-col items-center justify-center gap-1 transition-all border-slate-200 bg-white text-slate-600 hover:border-slate-300" data-lang="zh-CN">
+              <span class="text-2xl">🇨🇳</span>
+              <span>Chinese (中文)</span>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="auth-submit-btn" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm transition-all shadow-sm shadow-indigo-100 flex items-center justify-center gap-2 mt-2">
+          <span>Register Spoken Session</span>
+        </button>
+      </form>
+    </section>
+
+    <!-- STAGE 2: DIALER DASHBOARD -->
+    <section id="dialer-view" class="hidden w-full max-w-md bg-white border border-slate-100 rounded-3xl p-8 shadow-md">
+      <!-- User Identity Highlight -->
+      <div class="bg-slate-50 border border-slate-100 rounded-2xl p-5 mb-6">
+        <span class="text-[10px] uppercase font-bold tracking-widest text-slate-400">My Calling Profile</span>
+        <div class="flex items-center justify-between mt-2">
+          <div class="flex items-center gap-3">
+            <span id="my-profile-flag" class="text-3xl">🇵🇰</span>
+            <div>
+              <h3 id="my-profile-name" class="font-bold text-slate-900">------</h3>
+              <p id="my-profile-lang-text" class="text-xs text-slate-500 font-medium">Speaks: Urdu (اردو)</p>
+            </div>
+          </div>
+          <!-- Copy Button -->
+          <button id="copy-id-btn" class="flex items-center gap-1 text-[11px] font-mono bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 py-1.5 px-3 rounded-lg transition-all">
+            <i data-lucide="copy" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span>ID: <b id="my-profile-id" class="text-indigo-600 font-bold tracking-wide">-----</b></span>
+          </button>
+        </div>
+      </div>
+
+      <div id="dialer-error" class="hidden mb-4 p-3 bg-rose-50 border border-rose-100 text-rose-700 rounded-xl text-xs flex items-center gap-2">
+        <i data-lucide="alert-circle" class="w-4.5 h-4.5 shrink-0"></i>
+        <span id="dialer-error-msg">Error</span>
+      </div>
+
+      <!-- Call Friend Action Block -->
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">Enter Friend's 5-Digit ID to Connect</label>
+          <div class="relative">
+            <input type="text" id="friend-id-input" placeholder="e.g. 52391" class="w-full pl-4 pr-12 py-3.5 font-mono bg-slate-50 border border-slate-200 rounded-xl text-base tracking-wider placeholder:font-sans placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-slate-800" maxlength="8">
+            <div class="absolute top-1/2 right-3 -translate-y-1/2 w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+              <i data-lucide="globe" class="w-4 h-4"></i>
+            </div>
+          </div>
+        </div>
+
+        <button id="start-call-btn" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition-all shadow-sm shadow-indigo-100 flex items-center justify-center gap-2">
+          <i data-lucide="phone" class="w-4 h-4 fill-current"></i>
+          <span>Call Friend & Start Translating</span>
+        </button>
+      </div>
+
+      <div class="mt-6 border-t border-slate-100 pt-5 flex gap-3 text-slate-500 text-xs leading-relaxed">
+        <i data-lucide="info" class="w-4.5 h-4.5 text-indigo-600 shrink-0 mt-0.5"></i>
+        <div>
+          <p class="font-semibold text-slate-700">How to Translate Live:</p>
+          <p class="mt-1">Send your 5-digit ID to your friend. Put your IDs in, then press Call. The app will automatically capture speech, proxy translation via MyMemory, and play target voices back with correct accents.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAGE 3: OUTGOING RINGING CALL -->
+    <section id="ringing-view" class="hidden w-full max-w-md bg-white border border-slate-100 rounded-3xl p-8 shadow-md text-center">
+      <div class="relative mx-auto w-24 h-24 mb-6 flex items-center justify-center">
+        <span class="absolute inset-0 bg-indigo-100 rounded-full animate-ping opacity-60"></span>
+        <div class="absolute inset-x-0 w-24 h-24 rounded-full bg-indigo-600 flex items-center justify-center text-white">
+          <i data-lucide="phone" class="w-10 h-10 animate-bounce"></i>
+        </div>
+      </div>
+
+      <h2 class="text-xl font-bold text-slate-900">Ringing Friend...</h2>
+      <p class="text-sm text-slate-500 mt-1">Connecting WebRTC secure media channels</p>
+
+      <div class="mt-5 p-3.5 bg-indigo-50/50 rounded-2xl flex items-center justify-center gap-4 max-w-xs mx-auto text-sm font-semibold text-slate-800">
+        <div>
+          <span id="caller-flag">🇵🇰</span>
+          <div id="caller-name" class="mt-1 font-bold">You</div>
+        </div>
+        <div class="text-[10px] uppercase font-bold text-slate-400">TO</div>
+        <div>
+          <span id="callee-flag">🇨🇳</span>
+          <div id="callee-name" class="mt-1 font-bold">Friend</div>
+        </div>
+      </div>
+
+      <button id="cancel-call-btn" class="mt-8 px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2 mx-auto">
+        <i data-lucide="phone-off" class="w-4 h-4"></i>
+        <span>Cancel Call</span>
+      </button>
+    </section>
+
+    <!-- STAGE 4: INCOMING CALL PROMPT -->
+    <section id="incoming-view" class="hidden w-full max-w-md bg-white border border-stone-200/80 rounded-3xl p-8 shadow-lg text-center">
+      <div class="mx-auto w-20 h-20 mb-6 flex items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 shadow-inner">
+        <i data-lucide="phone-call" class="w-10 h-10 animate-pulse"></i>
+      </div>
+
+      <h2 class="text-xl font-bold text-slate-900">Incoming Voice Call</h2>
+      <p class="text-sm text-slate-500 mt-1">From: <span id="incoming-name" class="font-bold text-slate-700">Friend</span></p>
+
+      <div class="mt-4 p-3 bg-slate-50 rounded-xl flex items-center justify-center gap-3 max-w-xs mx-auto border border-slate-100 text-xs font-medium">
+        <span id="incoming-flag" class="text-lg">🇨🇳</span>
+        <span>Language Accent: <span id="incoming-lang-name">Chinese</span></span>
+      </div>
+
+      <div class="mt-8 grid grid-cols-2 gap-4">
+        <button id="decline-call-btn" class="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all">Decline</button>
+        <button id="accept-call-btn" class="py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all">Accept Call</button>
+      </div>
+    </section>
+
+    <!-- STAGE 5: ACTIVE SESSION CALL SCREEN -->
+    <section id="call-view" class="hidden w-full flex flex-col md:flex-row gap-6">
+      <!-- Left Segment: Core Call Interface -->
+      <div class="flex-1 space-y-5">
+        <!-- Active Info Header -->
+        <div class="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="relative">
+              <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white"></span>
+              <div id="friend-view-flag" class="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-2xl">🇨🇳</div>
+            </div>
+            <div>
+              <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest leading-none">Speaking with</div>
+              <h3 id="friend-view-name" class="font-bold text-slate-950 mt-1">Friend</h3>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-mono py-1 px-2.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-full font-bold flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+              Realtime WebRTC
+            </span>
+          </div>
+        </div>
+
+        <!-- Subtitles & Spoken Dialogue Cards -->
+        <div class="grid grid-rows-2 gap-4 h-[350px]">
+          
+          <!-- ME SPONSOR CAPTION -->
+          <div class="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between relative overflow-hidden">
+            <div class="flex items-center justify-between text-xs text-slate-400 font-bold border-b border-dashed border-slate-100 pb-2 mb-2">
+              <div class="flex items-center gap-2">
+                <span id="my-caption-flag" class="text-base">🇵🇰</span>
+                <span>My Speech (<span id="my-caption-lang">Urdu</span>)</span>
+              </div>
+              <span id="my-rec-badge" class="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1 text-[10px] animate-pulse">
+                <i data-lucide="mic" class="w-3 h-3"></i> Realtime Speak
+              </span>
+            </div>
+
+            <div class="flex-1 flex flex-col justify-center">
+              <p id="my-live-caption" class="text-base font-medium text-slate-800">Speak clearly into microphone...</p>
+              
+              <div id="my-translate-box" class="hidden mt-3 bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100/30">
+                <span class="text-[10px] uppercase font-mono tracking-widest text-indigo-500 block mb-0.5">Translation:</span>
+                <p id="my-live-translation" class="text-sm font-semibold text-indigo-900">Translation...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- FRIEND PEER CAPTION -->
+          <div class="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between relative overflow-hidden">
+            <div class="flex items-center justify-between text-xs text-slate-400 font-bold border-b border-dashed border-slate-100 pb-2 mb-2">
+              <div class="flex items-center gap-2">
+                <span id="peer-caption-flag" class="text-base">🇨🇳</span>
+                <span><span id="peer-caption-name">Friend</span>'s Translated Speech</span>
+              </div>
+              <span id="peer-voice-status" class="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md flex items-center gap-1 text-[10px] animate-pulse">
+                <i data-lucide="volume-2" class="w-3 h-3"></i> ACCENT PLAYING
+              </span>
+            </div>
+
+            <div class="flex-1 flex flex-col justify-center">
+              <p id="peer-original-caption" class="text-sm text-slate-500 italic">Original Speech: Waiting for spoken word...</p>
+              
+              <div id="peer-translate-box" class="hidden mt-3 bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/30">
+                <span class="text-[10px] uppercase font-mono tracking-widest text-emerald-600 block mb-0.5">Translated Accents:</span>
+                <p id="peer-live-translation" class="text-base font-bold text-emerald-950 font-serif">Translated speech...</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Call Panel Controls -->
+        <div class="bg-slate-900 rounded-3xl p-4 flex items-center justify-between shadow-md">
+          <div class="flex items-center space-x-2">
+            <button id="mute-mic-btn" class="p-3 rounded-xl transition-all bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" title="Mute Microphone">
+              <i data-lucide="mic" class="w-5 h-5"></i>
+            </button>
+            <button id="toggle-rec-btn" class="p-3 rounded-xl transition-all bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" title="Toggle Recognition">
+              <i data-lucide="globe" class="w-5 h-5"></i>
+            </button>
+            <button id="mute-tts-btn" class="p-3 rounded-xl transition-all bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" title="Mute Voices">
+              <i data-lucide="volume-2" class="w-5 h-5"></i>
+            </button>
+          </div>
+
+          <button id="hang-up-btn" class="flex items-center gap-2 px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition-all shadow-md shadow-rose-950/20">
+            <i data-lucide="phone-off" class="w-4 h-4 fill-current"></i>
+            <span>End Voice Call</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Right Segment: Dialogue Log History -->
+      <div class="w-full md:w-80 bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col h-[520px]">
+        <div class="flex items-center gap-2 font-bold text-slate-900 border-b border-slate-100 pb-3 mb-3 shrink-0 text-sm">
+          <i data-lucide="history" class="w-4.5 h-4.5 text-indigo-600"></i>
+          <span>Call Translation Logs</span>
+        </div>
+
+        <div id="logs-container" class="flex-1 overflow-y-auto space-y-3.5 pr-1 text-xs scrollbar-thin flex flex-col justify-center items-center text-center text-slate-300">
+          <i data-lucide="activity" class="w-8 h-8 opacity-45 mb-2 text-indigo-600"></i>
+          <p class="italic font-medium text-slate-400">No transcribing lines yet.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer System Status -->
+  <footer class="bg-white border-t border-slate-100 py-3 px-6 text-center">
+    <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
+      <p class="font-medium">Realtime Translator built with pure WebRTC, Socket.io & MyMemory Translation Service.</p>
+      <div class="flex items-center gap-2 text-[10px] font-mono font-extrabold text-slate-400 uppercase tracking-tight bg-slate-100 border border-slate-200/50 py-1 px-2.5 rounded-md">
+        <span>Status:</span>
+        <span id="connection-status" class="text-amber-600 animate-pulse">Disconnected</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Socket.io and Local Code Setup -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
