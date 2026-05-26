@@ -85,8 +85,9 @@ export default function App() {
   // State Trackers helper refs to avoid closure pitfalls inside async speech events
   const callStateRef = useRef<CallState>("idle");
   const localLangRef = useRef<string>("ur-PK");
-  const peerLangRef = useRef<string>("zh-CN");
+  const peerLangRef = useRef<string>("");
   const isMicMutedRef = useRef<boolean>(false);
+  const isTtsMutedRef = useRef<boolean>(false);
   const isRecognitionActiveRef = useRef<boolean>(true);
   const peerSocketIdRef = useRef<string | null>(null);
 
@@ -95,6 +96,7 @@ export default function App() {
   useEffect(() => { localLangRef.current = session?.currentLanguage || "ur-PK"; }, [session?.currentLanguage]);
   useEffect(() => { peerLangRef.current = peerSession?.currentLanguage || "zh-CN"; }, [peerSession?.currentLanguage]);
   useEffect(() => { isMicMutedRef.current = isMicMuted; }, [isMicMuted]);
+  useEffect(() => { isTtsMutedRef.current = isTtsMuted; }, [isTtsMuted]);
   useEffect(() => { isRecognitionActiveRef.current = isRecognitionActive; }, [isRecognitionActive]);
 
   // Generate random digits ID on start
@@ -274,7 +276,7 @@ export default function App() {
 
       // Append to scroll history
       const newMsg: ChatMessage = {
-        id: Math.random().toString(),
+        id: crypto.randomUUID(),
         senderName: peerSession?.username || "Friend",
         originalText: originalText,
         translatedText: translated,
@@ -285,7 +287,7 @@ export default function App() {
       setMessages((prev) => [newMsg, ...prev]);
 
       // Speak it out! (TTS synthesis)
-      if (!isTtsMuted) {
+      if (!isTtsMutedRef.current) {
         speakTranslatedText(translated, targetLang);
       }
     });
@@ -308,6 +310,8 @@ export default function App() {
       // 2. Instantiate peer connection with our required high-quality China-compatible STUN servers
       const pc = new RTCPeerConnection({
         iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
           { urls: "stun:stun.miwifi.com:3478" },
           { urls: "stun:stun.chat.bilibili.com:3478" },
           { urls: "stun:stun.qq.com:3478" },
@@ -562,7 +566,7 @@ export default function App() {
 
         // Add transaction block to history logs
         const newMsg: ChatMessage = {
-          id: Math.random().toString(),
+          id: crypto.randomUUID(),
           senderName: session?.username || "Me",
           originalText: transcriptText,
           translatedText: translated,
@@ -630,10 +634,11 @@ export default function App() {
 
   // Toggle Microphone Mute status
   const toggleMuteMicrophone = () => {
-    setIsMicMuted((prev) => !prev);
+    const newMutedState = !isMicMuted;
+    setIsMicMuted(newMutedState);
     if (localStreamRef.current) {
       localStreamRef.current.getAudioTracks().forEach((track) => {
-        track.enabled = isMicMuted; // Track enabled state is opposite of current muted state before toggle set
+        track.enabled = !newMutedState;
       });
     }
   };
@@ -748,7 +753,7 @@ export default function App() {
 
               <div className="text-center mb-6 relative z-10">
                 <div className="mx-auto flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full px-2.5 py-0.5 text-[10px] font-mono font-black uppercase tracking-widest leading-none mb-3.5 max-w-max">
-                  <Lock className="w-3 h-3 text-emerald-400 animate-pulse" /> E2EE Secured
+                  <Lock className="w-3 h-3 text-emerald-400 animate-pulse" /> WebRTC DTLS Secured
                 </div>
                 <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-indigo-400 mb-4 shadow-[0_0_20px_rgba(99,102,241,0.25),inset_0_2px_4px_rgba(255,255,255,0.1)] border border-indigo-500/30 hover:scale-105 transition-transform duration-300">
                   <User className="w-6 h-6 text-indigo-300 drop-shadow-[0_2px_4px_rgba(99,102,241,0.5)]" />
@@ -898,7 +903,7 @@ export default function App() {
 
               <div className="flex items-center gap-2 justify-center py-2.5 px-4 bg-emerald-500/5 border border-emerald-500/12 rounded-xl text-emerald-400 font-mono text-[10px] font-bold mb-5 shadow-inner relative z-10">
                 <Shield className="w-4 h-4 shrink-0 text-emerald-400" />
-                <span>P2P END-TO-END ENCRYPTED (E2EE) STREAM ACTIVE</span>
+                <span>P2P WebRTC DTLS ENCRYPTED STREAM ACTIVE</span>
               </div>
 
               {appError && (
@@ -1076,7 +1081,7 @@ export default function App() {
                   {/* Wave effect level */}
                   <div className="flex items-center gap-2">
                     <div className="hidden sm:flex items-center gap-1 bg-emerald-500/10 py-1.5 px-3 rounded-xl border border-emerald-500/25 text-emerald-400 font-mono text-[10px] font-black uppercase leading-none shadow-sm">
-                      <Lock className="w-3 h-3 text-emerald-400 animate-pulse" /> E2EE AES-256 SECURED
+                      <Lock className="w-3 h-3 text-emerald-400 animate-pulse" /> WebRTC DTLS SECURED
                     </div>
                     <div className="flex items-center gap-1 bg-indigo-500/10 py-1.5 px-3 rounded-xl border border-indigo-500/25 shadow-inner">
                       <div className="voice-wave-bar"></div>
@@ -1297,7 +1302,7 @@ export default function App() {
             </div>
             <div className="mt-4 flex flex-wrap gap-2.5">
               <span className="bg-[#020617] text-indigo-300 border border-indigo-950/30 font-mono text-[10px] uppercase font-black px-2.5 py-1 rounded">WebRTC Secure</span>
-              <span className="bg-[#020617] text-emerald-300 border border-emerald-950/30 font-mono text-[10px] uppercase font-black px-2.5 py-1 rounded">AES-256 E2EE</span>
+              <span className="bg-[#020617] text-emerald-300 border border-emerald-950/30 font-mono text-[10px] uppercase font-black px-2.5 py-1 rounded">WebRTC DTLS Encrypted</span>
               <span className="bg-[#020617] text-purple-300 border border-purple-900/40 font-mono text-[10px] uppercase font-black px-2.5 py-1 rounded">MyMemory Translation Engine</span>
               <span className="bg-[#020617] text-amber-300 border border-amber-900/40 font-mono text-[10px] uppercase font-black px-2.5 py-1 rounded">Local Synthesis (Urdu/zh/en)</span>
             </div>
@@ -1309,9 +1314,9 @@ export default function App() {
               <Lock className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-extrabold text-white text-sm">End-to-End Secure Call (E2EE)</h4>
+              <h4 className="font-extrabold text-white text-sm">WebRTC DTLS Encrypted Call</h4>
               <p className="text-xs text-slate-400 mt-1.5 leading-relaxed font-semibold">
-                Your audio streams and live captions are transmitted securely from your browser directly to your peer. No intermediate server stores or keeps track of your personal communication data.
+                Your audio streams are transmitted using WebRTC's built-in DTLS encryption directly between browsers. Translated subtitles are relayed via the signalling server but are not stored or logged.
               </p>
             </div>
           </div>
