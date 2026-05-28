@@ -23,7 +23,7 @@ import {
   Shield
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { UserSession, CallState, ChatMessage, SupportLanguage } from "./types";
+import { UserSession, CallState, ChatMessage, SupportLanguage, SpeechRecognition } from "./types";
 
 // Supported Translator Languages
 const SUPPORTED_LANGUAGES: SupportLanguage[] = [
@@ -78,9 +78,9 @@ export default function App() {
   const socketRef = useRef<Socket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
-  const iceCandidatesQueue = useRef<any[]>([]);
+  const iceCandidatesQueue = useRef<RTCIceCandidateInit[]>([]);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   // State Trackers helper refs to avoid closure pitfalls inside async speech events
   const callStateRef = useRef<CallState>("idle");
@@ -94,7 +94,7 @@ export default function App() {
   // Sync state trackers
   useEffect(() => { callStateRef.current = callState; }, [callState]);
   useEffect(() => { localLangRef.current = session?.currentLanguage || "ur-PK"; }, [session?.currentLanguage]);
-  useEffect(() => { peerLangRef.current = peerSession?.currentLanguage || "zh-CN"; }, [peerSession?.currentLanguage]);
+  useEffect(() => { peerLangRef.current = peerSession?.currentLanguage || ""; }, [peerSession?.currentLanguage]);
   useEffect(() => { isMicMutedRef.current = isMicMuted; }, [isMicMuted]);
   useEffect(() => { isTtsMutedRef.current = isTtsMuted; }, [isTtsMuted]);
   useEffect(() => { isRecognitionActiveRef.current = isRecognitionActive; }, [isRecognitionActive]);
@@ -606,7 +606,7 @@ export default function App() {
     }
   };
 
-  // Toggle speech speech recognition manual state
+  // Toggle speech recognition manual state
   useEffect(() => {
     if (callState === "connected") {
       if (isRecognitionActive && !isMicMuted) {
@@ -617,7 +617,8 @@ export default function App() {
         }
       }
     }
-  }, [isRecognitionActive, isMicMuted, callState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRecognitionActive, isMicMuted, callState]); // startSpeechRecognition only uses refs — safe to omit
 
   // Translate code utility
   const getLanguageFlag = (localeCode: string) => {

@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: process.env.NODE_ENV === "production" ? (process.env.APP_URL || false) : "*",
     methods: ["GET", "POST"]
   }
 });
@@ -159,6 +159,6 @@ app.get("*", (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Vanilla Realtime Voice Translator running on port ${PORT}`);
-  console.log(`Open http://localhost:${PORT} in your browsers`);
+  console.log("Vanilla Realtime Voice Translator running on port " + PORT);
+  console.log("Open http://localhost:" + PORT + " in your browsers");
 });

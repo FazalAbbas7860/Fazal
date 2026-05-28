@@ -27,3 +27,17 @@ export interface SupportLanguage {
   name: string;       // Human-readable local name
   flag: string;       // Visual emoji helper
 }
+
+export interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => any) | null;
+  onresult: ((event: any) => any) | null;
+  onerror: ((event: any) => any) | null;
+  onend: (() => any) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
